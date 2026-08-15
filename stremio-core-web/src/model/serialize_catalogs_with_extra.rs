@@ -71,8 +71,8 @@ impl<'a> CatalogsWithExtra<'a> {
             catalogs: catalogs_with_extra
                 .catalogs
                 .iter()
-                .filter_map(|catalog| catalog.first())
-                .filter_map(|catalog| {
+                .filter_map(|pages| pages.first().map(|catalog| (pages, catalog)))
+                .filter_map(|(pages, catalog)| {
                     ctx.profile
                         .addons
                         .iter()
@@ -86,10 +86,10 @@ impl<'a> CatalogsWithExtra<'a> {
                                     manifest_catalog.id == catalog.request.path.id
                                         && manifest_catalog.r#type == catalog.request.path.r#type
                                 })
-                                .map(|manifest_catalog| (addon, manifest_catalog, catalog))
+                                .map(|manifest_catalog| (addon, manifest_catalog, pages, catalog))
                         })
                 })
-                .map(|(addon, manifest_catalog, catalog)| ResourceLoadable {
+                .map(|(addon, manifest_catalog, pages, catalog)| ResourceLoadable {
                     id: manifest_catalog.id.to_string(),
                     name: manifest_catalog
                         .name
@@ -108,10 +108,12 @@ impl<'a> CatalogsWithExtra<'a> {
                             let poster_shape =
                                 meta_items.first().map(|meta_item| &meta_item.poster_shape);
                             Some(Loadable::Ready(
-                                meta_items
+                                pages
                                     .iter()
+                                    .filter_map(|page| page.content.as_ref())
+                                    .filter_map(|content| content.ready())
+                                    .flat_map(|meta_items| meta_items.iter())
                                     .unique_by(|meta_item| &meta_item.id)
-                                    .take(10)
                                     .map(|meta_item| MetaItemPreview {
                                         meta_item,
                                         poster_shape: poster_shape
